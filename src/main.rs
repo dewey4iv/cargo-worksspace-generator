@@ -1,4 +1,11 @@
-use std::{collections::HashMap, env, fs::File, io::Write, path::PathBuf, process::Command};
+use std::{
+    collections::HashMap,
+    env,
+    fs::File,
+    io::{self, Write},
+    path::PathBuf,
+    process::Command,
+};
 
 pub type BoxedError = Box<dyn std::error::Error>;
 
@@ -88,11 +95,18 @@ fn make(conf: &Conf, map: HashMap<Crate, Vec<Dep>>) -> Result<(), BoxedError> {
     handle_command(Command::new("mkdir").args(["-p", dir]))?;
 
     if let Ok(mut file) = File::create_new(format!("{}/Cargo.toml", loc_dir)) {
+        println!("no workspace Cargo.toml found -- creating");
+
         file.write_all(include_bytes!("../Workspace.toml"))?;
     };
 
-    println!("generating crates");
+    print!("generating crates");
+    io::stdout().flush()?;
+
     for (crate_, _) in map.iter() {
+        print!(".");
+        io::stdout().flush()?;
+
         let crate_fullname = format!("{}-{}", &conf.project_base, crate_.name());
 
         handle_command(Command::new("cargo").current_dir(dir).args([
@@ -102,12 +116,19 @@ fn make(conf: &Conf, map: HashMap<Crate, Vec<Dep>>) -> Result<(), BoxedError> {
         ]))?;
     }
 
-    println!("adding dependencies");
+    println!();
+
+    print!("adding dependencies");
+    io::stdout().flush()?;
+
     for (crate_, deps) in map.iter() {
         let crate_fullname = format!("{}-{}", &conf.project_base, crate_.name());
         let crate_full_dir = dst.join(&crate_fullname);
 
         for dep in deps.iter() {
+            print!(".");
+            io::stdout().flush()?;
+
             let mut args: Vec<String> = vec!["add".to_string()];
 
             if let Some(flag) = dep.add_flag() {
@@ -129,6 +150,8 @@ fn make(conf: &Conf, map: HashMap<Crate, Vec<Dep>>) -> Result<(), BoxedError> {
             )?;
         }
     }
+
+    println!();
 
     Ok(())
 }
